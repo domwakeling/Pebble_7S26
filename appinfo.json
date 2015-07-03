@@ -3,11 +3,17 @@
     "capabilities": [
         ""
     ],
-    "companyName": "dominic.wakeling@btinternet.co",
+    "companyName": "dominic.wakeling@btinternet.com",
     "longName": "7S26",
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/28SQ.png",
+                "menuIcon": true,
+                "name": "28_SQ",
+                "type": "png"
+            },
             {
                 "file": "images/dial.png",
                 "name": "DIAL",
