@@ -1,0 +1,49 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "dominic.wakeling@btinternet.co",
+    "longName": "7S26",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/dial.png",
+                "name": "DIAL",
+                "type": "png"
+            },
+            {
+                "characterRegex": "[0-9:A-Z ]",
+                "file": "fonts/Eurostile-Normal.ttf",
+                "name": "EUROSTILE_11",
+                "type": "font"
+            },
+            {
+                "file": "images/hours.png",
+                "name": "HOUR_HAND",
+                "type": "png"
+            },
+            {
+                "file": "images/seconds.png",
+                "name": "SECOND_HAND",
+                "type": "png"
+            },
+            {
+                "file": "images/minutes.png",
+                "name": "MINUTE_HAND",
+                "type": "png"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "7S26",
+    "targetPlatforms": [
+        "basalt"
+    ],
+    "uuid": "669d0522-ae35-43e1-80e7-35befb1a49d5",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
