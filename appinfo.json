@@ -1,13 +1,35 @@
 {
-    "appKeys": {},
+    "appKeys": {
+        "KEY_DIAL_COLOUR": 0
+    },
     "capabilities": [
-        ""
+        "configurable"
     ],
     "companyName": "dominic.wakeling@btinternet.com",
     "longName": "7S26",
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/seconds_b.png",
+                "name": "SECOND_HAND_B",
+                "type": "png"
+            },
+            {
+                "file": "images/minutes_b.png",
+                "name": "MINUTE_HAND_B",
+                "type": "png"
+            },
+            {
+                "file": "images/hours_b.png",
+                "name": "HOUR_HAND_B",
+                "type": "png"
+            },
+            {
+                "file": "images/dial_black.png",
+                "name": "DIAL_B",
+                "type": "png"
+            },
             {
                 "file": "images/28SQ.png",
                 "menuIcon": true,
@@ -48,7 +70,7 @@
         "basalt"
     ],
     "uuid": "669d0522-ae35-43e1-80e7-35befb1a49d5",
-    "versionLabel": "1.1",
+    "versionLabel": "1.2",
     "watchapp": {
         "watchface": true
     }
