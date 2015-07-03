@@ -164,6 +164,15 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		
 		// set the date to show
 		strftime(date_buff, sizeof("00"), "%e", tick_time);
+		
+		// check if first character is a string, if so swap order
+		if(date_buff[0] == ' ') {
+			char temp_char = date_buff[1];
+			date_buff[0] = temp_char;
+			date_buff[1] = ' ';
+		}
+		
+		// show the date
 		text_layer_set_text(date_text_layer, date_buff);
 		
 		// set the day to show - stage 1, get the day of week as a char
