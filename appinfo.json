@@ -3,7 +3,7 @@
         "KEY_DIAL_COLOUR": 0
     },
     "capabilities": [
-        "configurable"
+        ""
     ],
     "companyName": "dominic.wakeling@btinternet.com",
     "longName": "7S26",
@@ -70,7 +70,7 @@
         "basalt"
     ],
     "uuid": "669d0522-ae35-43e1-80e7-35befb1a49d5",
-    "versionLabel": "1.2",
+    "versionLabel": "1.4",
     "watchapp": {
         "watchface": true
     }

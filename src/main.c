@@ -235,9 +235,9 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		
 		// set the day to show - stage 3, change text colour if necessary and display
 		text_layer_set_text(day_text_layer, day_buff);
-		if(strcmp(day_buff, " SUN") == 0) {
+		if(strcmp(day_buff, "SUN ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorRed);
-		} else if(strcmp(day_buff, " SAT") == 0) {
+		} else if(strcmp(day_buff, "SAT ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorBlue);
 		} else {
 			text_layer_set_text_color(day_text_layer, GColorBlack);
@@ -250,9 +250,9 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		text_layer_set_text(date_text_layer, date_buff);
 		strcpy(day_buff, day_in_caps_from_int(seconds%7));
 		text_layer_set_text(day_text_layer, day_buff);
-		if(strcmp(day_buff, " SUN") == 0) {
+		if(strcmp(day_buff, "SUN ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorRed);
-		} else if(strcmp(day_buff, " SAT") == 0) {
+		} else if(strcmp(day_buff, "SAT ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorBlue);
 		} else {
 			text_layer_set_text_color(day_text_layer, GColorBlack);
