@@ -11,6 +11,21 @@
     "resources": {
         "media": [
             {
+                "file": "images/dial.png",
+                "name": "DIAL",
+                "type": "png"
+            },
+            {
+                "file": "images/minutes.png",
+                "name": "MINUTE_HAND",
+                "type": "png"
+            },
+            {
+                "file": "images/hours.png",
+                "name": "HOUR_HAND",
+                "type": "png"
+            },
+            {
                 "file": "images/seconds_b.png",
                 "name": "SECOND_HAND_B",
                 "type": "png"
@@ -37,29 +52,14 @@
                 "type": "png"
             },
             {
-                "file": "images/dial.png",
-                "name": "DIAL",
-                "type": "png"
-            },
-            {
                 "characterRegex": "[0-9:A-Z ]",
                 "file": "fonts/Eurostile-Normal.ttf",
-                "name": "EUROSTILE_11",
+                "name": "EUROSTILE_12",
                 "type": "font"
-            },
-            {
-                "file": "images/hours.png",
-                "name": "HOUR_HAND",
-                "type": "png"
             },
             {
                 "file": "images/seconds.png",
                 "name": "SECOND_HAND",
-                "type": "png"
-            },
-            {
-                "file": "images/minutes.png",
-                "name": "MINUTE_HAND",
                 "type": "png"
             }
         ]

@@ -1,5 +1,9 @@
 #include <pebble.h>
-#include "gpathcentrerotate.h"
+
+//#define DCW_DEBUG			// delete the comment qualifier to include debug options at compile
+#ifdef DCW_DEBUG
+	#include "debugassist.h"
+#endif
 
 /*****************************************************/
 /******************* DEFINE KEYS *********************/	
@@ -19,8 +23,8 @@
 #define BACKGROUND_COLOUR GColorOrange
 
 /* centre of rotation */
-#define ROT_CENTRE_X 72
-#define ROT_CENTRE_Y 84
+#define ROT_CENTRE_X 71
+#define ROT_CENTRE_Y 83
 
 /* top "circle" */
 #define CENTRE_DIA 6
@@ -29,12 +33,11 @@
 
 /* hour hand info */	
 #define HR_ROT_X 10
-#define HR_ROT_Y 37
+#define HR_ROT_Y 39
 
 /* minute hand info */	
 #define MIN_ROT_X 5
 #define MIN_ROT_Y 66
-	
 	
 /* seconds hand info */
 #define SEC_ROT_X 5
@@ -51,7 +54,6 @@ BitmapLayer *dial_layer;
 RotBitmapLayer *minute_layer, *hour_layer, *second_layer;
 TextLayer *day_text_layer, *date_text_layer;
 
-
 /* paths, fonts & bitmaps */
 GBitmap *minute_hand_map, *hour_hand_map, *second_hand_map, *dial_map;
 GFont eurostile_font;
@@ -64,7 +66,7 @@ int hours, minutes, seconds, hours_display;
 int hours_angle = -1;			// set to -1 as default so we draw on load
 int minutes_angle = -1;		// set to -1 as default so we draw on load
 
-int temp_angle = 0;
+//int temp_angle = 0;
 
 
 /*****************************************************/
@@ -72,22 +74,62 @@ int temp_angle = 0;
 /*****************************************************/
 
 void circle_update_proc(Layer *l, GContext *ctx) {
-	graphics_context_set_fill_color(ctx, CIRCLE_FILL_COLOUR);
-	graphics_context_set_stroke_color(ctx, CIRCLE_STROKE_COLOUR);
-	graphics_fill_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA);
-	graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), 1);
+	
+	// if DCW_DEBUG is defined we will draw cross-hairs and two circles, otherwise the circles as required
+	#ifdef DCW_DEBUG
+		graphics_context_set_fill_color(ctx, GColorWhite);
+		graphics_context_set_stroke_color(ctx, GColorWhite);
+		graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), 63);
+		graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), 22);
+		graphics_draw_line(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y - 4), GPoint(ROT_CENTRE_X, ROT_CENTRE_Y + 4));
+		graphics_draw_line(ctx, GPoint(ROT_CENTRE_X - 4, ROT_CENTRE_Y), GPoint(ROT_CENTRE_X + 4, ROT_CENTRE_Y));
+	#else
+		graphics_context_set_fill_color(ctx, CIRCLE_FILL_COLOUR);
+		graphics_context_set_stroke_color(ctx, CIRCLE_STROKE_COLOUR);
+		graphics_fill_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA);
+		graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), 1);
+	#endif
+}
+
+int get_off_x() {
+	if( seconds >= 23 && seconds <= 42) {
+		return -1;
+	} else if( seconds >= 15 && seconds <= 45) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+int get_off_y() {
+	if( seconds >= 6 && seconds <= 22) {
+		return 2;
+	} else if( seconds >= 25 && seconds <= 55 ) {
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 void rotated_map_update(RotBitmapLayer *l, int deg) {
 	GRect r;
 	int32_t rot_angle = deg * TRIG_MAX_ANGLE / 360;
 	r = layer_get_frame((Layer *)l);
-	r.origin.x = (SCREEN_WIDTH - r.size.w)/2;
-	r.origin.y = (SCREEN_HEIGHT - r.size.h)/2;
+	r.origin.x = (SCREEN_WIDTH - r.size.w)/2 - 1;
+	r.origin.y = (SCREEN_HEIGHT - r.size.h)/2 - 1;
 	layer_set_frame((Layer *)l, r);
 	rot_bitmap_layer_set_angle(l, rot_angle);
 }
 
+
+void finesse_hands(RotBitmapLayer *l) {
+	GRect r;
+	r = layer_get_frame((Layer *)l);
+	r.origin.x += get_off_x();
+	r.origin.y += get_off_y();
+	layer_set_frame((Layer *)l, r);
+
+}
 
 /*****************************************************/
 /********** TICK HANDLER HELPER FUNCTIONS ************/	
@@ -116,31 +158,32 @@ char *day_in_caps(char *day) {
 	
 	switch (day_char_as_int(day)) {
 		case 0:
-			return " SUN";
+			return "SUN ";
 			break;
 		case 1:
 			return "MON ";
 			break;
 		case 2:
-			return " TUE";
+			return "TUE ";
 			break;
 		case 3:
 			return "WED ";
 			break;
 		case 4:
-			return " THU";
+			return "THU ";
 			break;
 		case 5:
-			return " FRI";
+			return "FRI ";
 			break;
 		case 6:
-			return " SAT";
+			return "SAT ";
 			break;
 		default:
 			return " ERR";
 			break;
 	}
 }
+
 
 /*****************************************************/
 /******************* TICK HANDLER ********************/	
@@ -179,7 +222,7 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 			date_buff[0] = temp_char;
 			date_buff[1] = ' ';
 		}
-		
+				
 		// show the date
 		text_layer_set_text(date_text_layer, date_buff);
 		
@@ -187,21 +230,35 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		char *temp_buff = "0";
 		strftime(temp_buff, sizeof(temp_buff), "%w", tick_time);
 
-		// set the day to show - stage 3, set date as string
+		// set the day to show - stage 2, set date as string
 		strcpy(day_buff, day_in_caps(temp_buff));
-		text_layer_set_text(day_text_layer, day_buff);
 		
-		// set the day to show - stage 2, change text colour if necessary
+		// set the day to show - stage 3, change text colour if necessary and display
+		text_layer_set_text(day_text_layer, day_buff);
 		if(strcmp(day_buff, " SUN") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorRed);
 		} else if(strcmp(day_buff, " SAT") == 0) {
-			text_layer_set_text_color(day_text_layer, GColorDukeBlue);
+			text_layer_set_text_color(day_text_layer, GColorBlue);
+		} else {
+			text_layer_set_text_color(day_text_layer, GColorBlack);
+		}		
+	}
+	
+	// debugging option for date and day - #define DCW_DEBUG to use
+	#ifdef DCW_DEBUG
+		snprintf(date_buff, sizeof(date_buff), "%d", seconds);
+		text_layer_set_text(date_text_layer, date_buff);
+		strcpy(day_buff, day_in_caps_from_int(seconds%7));
+		text_layer_set_text(day_text_layer, day_buff);
+		if(strcmp(day_buff, " SUN") == 0) {
+			text_layer_set_text_color(day_text_layer, GColorRed);
+		} else if(strcmp(day_buff, " SAT") == 0) {
+			text_layer_set_text_color(day_text_layer, GColorBlue);
 		} else {
 			text_layer_set_text_color(day_text_layer, GColorBlack);
 		}
+	#endif
 		
-	}
-	
 	// check whether we need to re-draw hours hand
 	if( hours_angle == -1 || hours_angle != get_hours_angle() ) {
 		hours_angle = get_hours_angle();
@@ -216,7 +273,7 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 	
 	// draw seconds hand
 	rotated_map_update(second_layer, seconds * 360 / 60);
-	
+	finesse_hands(second_layer);
 	
 	// un-hide the rotbitmap hands first time we draw - stops them showing in random position on load
 	bool hands_hidden = layer_get_hidden((Layer *)minute_layer);
@@ -225,6 +282,13 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		layer_set_hidden((Layer *)hour_layer, false);
 		layer_set_hidden((Layer *)second_layer, false);
 	}
+	
+	// debug option to hide hours and minute hands - #define DCW_DEBUG to use
+	#ifdef DCW_DEBUG
+		layer_set_hidden((Layer*)minute_layer, true);
+		layer_set_hidden((Layer*)hour_layer, true);
+	#endif
+	
 }
 
 
@@ -274,11 +338,11 @@ static void main_window_load(Window *w) {
 	bitmap_layer_set_bitmap(dial_layer, dial_map);
 		
 	// load the custom text
-	eurostile_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_EUROSTILE_11));
+	eurostile_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_EUROSTILE_12));
 	
 	// create the text layers
-	date_text_layer = text_layer_create(GRect(108,77,30,30));
-	day_text_layer = text_layer_create(GRect(97,77,50,30)); 
+	date_text_layer = text_layer_create(GRect(107,76,30,30));
+	day_text_layer = text_layer_create(GRect(95,76,50,30)); 
 	
 	// set their initial format
 	text_layer_set_background_color(date_text_layer, GColorClear);
