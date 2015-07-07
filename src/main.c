@@ -49,13 +49,15 @@
 
 /* windows & layers */
 static Window *main_window;
+Layer *hand_group_layer;
 Layer *circle_layer;
 BitmapLayer *dial_layer;
 RotBitmapLayer *minute_layer, *hour_layer, *second_layer;
 TextLayer *day_text_layer, *date_text_layer;
 
 /* paths, fonts & bitmaps */
-GBitmap *minute_hand_map, *hour_hand_map, *second_hand_map, *dial_map;
+GBitmap *minute_hand_map_o, *hour_hand_map_o, *second_hand_map_o, *dial_map_o;
+GBitmap *minute_hand_map_b, *hour_hand_map_b, *second_hand_map_b, *dial_map_b;
 GFont eurostile_font;
 
 /* variables */
@@ -65,6 +67,7 @@ bool drawing_hands = false;
 int hours, minutes, seconds, hours_display;
 int hours_angle = -1;			// set to -1 as default so we draw on load
 int minutes_angle = -1;		// set to -1 as default so we draw on load
+bool dial_is_black;
 
 //int temp_angle = 0;
 
@@ -75,7 +78,7 @@ int minutes_angle = -1;		// set to -1 as default so we draw on load
 
 void circle_update_proc(Layer *l, GContext *ctx) {
 	
-	// if DCW_DEBUG is defined we will draw cross-hairs and two circles, otherwise the circles as required
+	// if DCW_DEBUG is defined we will draw cross-hairs and two circles, otherwise the "pommel"
 	#ifdef DCW_DEBUG
 		graphics_context_set_fill_color(ctx, GColorWhite);
 		graphics_context_set_stroke_color(ctx, GColorWhite);
@@ -84,11 +87,21 @@ void circle_update_proc(Layer *l, GContext *ctx) {
 		graphics_draw_line(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y - 4), GPoint(ROT_CENTRE_X, ROT_CENTRE_Y + 4));
 		graphics_draw_line(ctx, GPoint(ROT_CENTRE_X - 4, ROT_CENTRE_Y), GPoint(ROT_CENTRE_X + 4, ROT_CENTRE_Y));
 	#else
-		graphics_context_set_fill_color(ctx, CIRCLE_FILL_COLOUR);
-		graphics_context_set_stroke_color(ctx, CIRCLE_STROKE_COLOUR);
-		graphics_fill_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA);
+		if(dial_is_black) {
+			graphics_context_set_fill_color(ctx, CIRCLE_STROKE_COLOUR);
+			graphics_context_set_stroke_color(ctx, CIRCLE_FILL_COLOUR);
+			graphics_fill_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA + 1);
+			graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA + 1);
+		} else {
+			graphics_context_set_fill_color(ctx, CIRCLE_FILL_COLOUR);
+			graphics_context_set_stroke_color(ctx, CIRCLE_STROKE_COLOUR);
+			graphics_fill_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), CENTRE_DIA);
+		}
 		graphics_draw_circle(ctx, GPoint(ROT_CENTRE_X, ROT_CENTRE_Y), 1);
 	#endif
+}
+
+void dummy_update_proc(Layer *l, GContext *ctx) {
 }
 
 int get_off_x() {
@@ -128,7 +141,6 @@ void finesse_hands(RotBitmapLayer *l) {
 	r.origin.x += get_off_x();
 	r.origin.y += get_off_y();
 	layer_set_frame((Layer *)l, r);
-
 }
 
 /*****************************************************/
@@ -184,6 +196,113 @@ char *day_in_caps(char *day) {
 	}
 }
 
+/*****************************************************/
+/********** HELPERS FOR B&W / DRAWING LAYERS *********/	
+/*****************************************************/
+
+/* set all the hands to be hidden */
+void hide_all_hands() {
+	layer_set_hidden((Layer *)minute_layer, true);
+	layer_set_hidden((Layer *)hour_layer, true);
+	layer_set_hidden((Layer *)second_layer, true);
+}
+
+/* helper to create all the gbitmaps */
+void load_bitmaps() {
+		dial_map_b = gbitmap_create_with_resource(RESOURCE_ID_DIAL_B);
+		second_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND_B);
+		minute_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND_B);
+		hour_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND_B);
+		dial_map_o = gbitmap_create_with_resource(RESOURCE_ID_DIAL);
+		hour_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND);
+		minute_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND);
+		second_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND);
+}
+
+/* helper to destroy all the gbitmaps */
+void destroy_bitmaps() {
+	gbitmap_destroy(dial_map_b);
+	gbitmap_destroy(dial_map_o);
+	gbitmap_destroy(second_hand_map_b);
+	gbitmap_destroy(second_hand_map_o);
+	gbitmap_destroy(minute_hand_map_b);
+	gbitmap_destroy(minute_hand_map_o);
+	gbitmap_destroy(hour_hand_map_b);
+	gbitmap_destroy(hour_hand_map_o);
+}
+
+/* helpers to get the correct bitmap for dial colour */
+GBitmap* active_dial_map() {
+	if(dial_is_black) {
+		return dial_map_b;
+	} else {
+		return dial_map_o;
+	}
+}
+
+GBitmap* active_hour_map() {
+	if(dial_is_black) {
+		return hour_hand_map_b;
+	} else {
+		return hour_hand_map_o;
+	}
+}
+
+GBitmap* active_minute_map() {
+	if(dial_is_black) {
+		return minute_hand_map_b;
+	} else {
+		return minute_hand_map_o;
+	}
+}
+
+GBitmap* active_second_map() {
+	if(dial_is_black) {
+		return second_hand_map_b;
+	} else {
+		return second_hand_map_o;
+	}
+}
+
+/* helper routine to set up the dial and hands, bool whether we need to destroy rotbitmaplayers */
+void initialise_dial_and_hands(bool destroy_required) {
+	
+	strcpy(date_buff, "00");
+	strcpy(day_buff, "ABCD");
+	drawing_hands = false;
+	hours_angle = -1;			// set to -1 as default so we draw on load
+	minutes_angle = -1;		// set to -1 as default so we draw on load
+	
+	// if destroy_required true, destroy the hand rotbitmaplayers
+	if(destroy_required) {
+		rot_bitmap_layer_destroy(hour_layer);
+		rot_bitmap_layer_destroy(minute_layer);
+		rot_bitmap_layer_destroy(second_layer);
+	}
+	
+	// set the dial layer
+	bitmap_layer_set_bitmap(dial_layer, active_dial_map());
+	
+	// set up the rotbitmaplayers
+	hour_layer = rot_bitmap_layer_create(active_hour_map());
+	minute_layer = rot_bitmap_layer_create(active_minute_map());
+	second_layer = rot_bitmap_layer_create(active_second_map());
+	rot_bitmap_set_compositing_mode(hour_layer, GCompOpSet);
+	rot_bitmap_set_compositing_mode(minute_layer, GCompOpSet);
+	rot_bitmap_set_compositing_mode(second_layer, GCompOpSet);
+	rot_bitmap_set_src_ic(minute_layer, GPoint(MIN_ROT_X, MIN_ROT_Y));
+	rot_bitmap_set_src_ic(second_layer, GPoint(SEC_ROT_X, SEC_ROT_Y));
+	rot_bitmap_set_src_ic(hour_layer, GPoint(HR_ROT_X, HR_ROT_Y));
+	
+	// add the rotbitmaplayers
+	layer_add_child(hand_group_layer, (Layer *)hour_layer);
+	layer_add_child(hand_group_layer, (Layer *)minute_layer);
+	layer_add_child(hand_group_layer, (Layer *)second_layer);
+	
+	// hide the hands
+	hide_all_hands();
+}
+
 
 /*****************************************************/
 /******************* TICK HANDLER ********************/	
@@ -213,6 +332,13 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 	// update date if either it's not displaying OR this is a new day
 	if(strcmp(date_buff, "00") == 0 || (hours == 0 && minutes == 0 && seconds == 0)) {
 		
+		// set the colour
+		if(dial_is_black) {
+			text_layer_set_text_color(date_text_layer, GColorWhite);
+		} else {
+			text_layer_set_text_color(date_text_layer, GColorBlack);
+		}
+		
 		// set the date to show
 		strftime(date_buff, sizeof("00"), "%e", tick_time);
 		
@@ -237,8 +363,10 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		text_layer_set_text(day_text_layer, day_buff);
 		if(strcmp(day_buff, "SUN ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorRed);
-		} else if(strcmp(day_buff, "SAT ") == 0) {
+		} else if(strcmp(day_buff, "SAT ") == 0 && !dial_is_black) {
 			text_layer_set_text_color(day_text_layer, GColorBlue);
+		} else if(dial_is_black){
+			text_layer_set_text_color(day_text_layer, GColorWhite);
 		} else {
 			text_layer_set_text_color(day_text_layer, GColorBlack);
 		}		
@@ -252,11 +380,13 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		text_layer_set_text(day_text_layer, day_buff);
 		if(strcmp(day_buff, "SUN ") == 0) {
 			text_layer_set_text_color(day_text_layer, GColorRed);
-		} else if(strcmp(day_buff, "SAT ") == 0) {
+		} else if(strcmp(day_buff, "SAT ") == 0 && !dial_is_black) {
 			text_layer_set_text_color(day_text_layer, GColorBlue);
+		} else if(dial_is_black){
+			text_layer_set_text_color(day_text_layer, GColorWhite);
 		} else {
 			text_layer_set_text_color(day_text_layer, GColorBlack);
-		}
+		}	
 	#endif
 		
 	// check whether we need to re-draw hours hand
@@ -293,6 +423,52 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 
 
 /*****************************************************/
+/********* COMMUNICATION HANDLER CALLBACKS ***********/	
+/*****************************************************/
+
+/*inbox received callback, deal with successful receipt of message from phone */
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+
+	// define our temporary buffer first
+	char colour_buffer[7];
+	
+	// read first item from the dictionary
+	Tuple *t = dict_read_first(iterator);
+	
+	// there's only going to be one key at the moment ...
+	while(t != NULL) {
+		
+		switch(t->key) {
+			
+			// if it's the bluetooth-showing item
+			case KEY_DIAL_COLOUR:
+				// use persist_log_bool to log value and use the return value (1 true, 0 false, -1 error)
+				snprintf(colour_buffer, sizeof(colour_buffer), "%s", t->value->cstring );
+				APP_LOG(APP_LOG_LEVEL_INFO, "Colour received: %s", colour_buffer);
+				if(strcmp(colour_buffer, "orange") == 0) {
+					dial_is_black = false;
+				} else {
+					dial_is_black = true;
+				}
+				persist_write_bool(PERSIST_DIAL_COLOUR, dial_is_black);
+				initialise_dial_and_hands(true);
+				break;		
+		}
+		
+		// Look for next item
+    t = dict_read_next(iterator);
+	}
+}
+
+/* inbox dropped callback - logs a message that there's been an error */
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+	APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped");
+}
+
+
+
+
+/*****************************************************/
 /*************** MAIN WINDOW HANDLERS ****************/	
 /*****************************************************/
 
@@ -305,38 +481,19 @@ static void main_window_load(Window *w) {
 	
 	// init our general layers
 	GRect r = GRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
+	hand_group_layer = layer_create(r);
 	circle_layer = layer_create(r);
 	
 	// set update procs
 	layer_set_update_proc(circle_layer, circle_update_proc);
-		
-	// init our gpaths
+	layer_set_update_proc(hand_group_layer, dummy_update_proc);
 	
-	// init our bitmaps
-	dial_map = gbitmap_create_with_resource(RESOURCE_ID_DIAL);
-	minute_hand_map = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND);
-	hour_hand_map = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND);
-	second_hand_map = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND);
+	// load the gbitmaps
+	load_bitmaps();
 	
-	// create rotbitmaplayers
-	minute_layer = rot_bitmap_layer_create(minute_hand_map);
-	hour_layer = rot_bitmap_layer_create(hour_hand_map);
-	second_layer = rot_bitmap_layer_create(second_hand_map);
-	
-	// set rotation points
-	rot_bitmap_set_src_ic(minute_layer, GPoint(MIN_ROT_X, MIN_ROT_Y));
-	rot_bitmap_set_src_ic(hour_layer, GPoint(HR_ROT_X, HR_ROT_Y));
-	rot_bitmap_set_src_ic(second_layer, GPoint(SEC_ROT_X, SEC_ROT_Y));
-	
-	// set compositing modes
-	rot_bitmap_set_compositing_mode(minute_layer, GCompOpSet);
-	rot_bitmap_set_compositing_mode(hour_layer, GCompOpSet);
-	rot_bitmap_set_compositing_mode(second_layer, GCompOpSet);	
-	
-	// create background bitmaplayer
+	// set the bitmap layers up
 	dial_layer = bitmap_layer_create(r);
-	bitmap_layer_set_bitmap(dial_layer, dial_map);
-		
+	
 	// load the custom text
 	eurostile_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_EUROSTILE_12));
 	
@@ -358,30 +515,32 @@ static void main_window_load(Window *w) {
 	layer_add_child(w_layer, (Layer *)dial_layer);
 	layer_add_child(w_layer, text_layer_get_layer(day_text_layer));
 	layer_add_child(w_layer, text_layer_get_layer(date_text_layer));
-	layer_add_child(w_layer, (Layer *)hour_layer);
-	layer_add_child(w_layer, (Layer *)minute_layer);
-	layer_add_child(w_layer, (Layer *)second_layer);
+	layer_add_child(w_layer, hand_group_layer);
 	layer_add_child(w_layer, circle_layer);
 	
-	// hide the hand layers until we've placed them!
-	layer_set_hidden((Layer *)minute_layer, true);
-	layer_set_hidden((Layer *)hour_layer, true);
-	layer_set_hidden((Layer *)second_layer, true);
+	// read persistant state for black dial and set accordingly
+	if(persist_exists(PERSIST_DIAL_COLOUR)) {
+		dial_is_black = persist_read_bool(PERSIST_DIAL_COLOUR);
+	} else {
+		dial_is_black = false;
+		persist_write_bool(PERSIST_DIAL_COLOUR, dial_is_black);
+	}
+	
+	// set the dial and create/set up the hands
+	initialise_dial_and_hands(false);
 }
 
 static void main_window_unload(Window *w) {
 	// destroy layers
+	bitmap_layer_destroy(dial_layer);
 	rot_bitmap_layer_destroy(hour_layer);
 	rot_bitmap_layer_destroy(second_layer);
-	layer_destroy(circle_layer);
 	rot_bitmap_layer_destroy(minute_layer);
-	bitmap_layer_destroy(dial_layer);
+	layer_destroy(hand_group_layer);
+	layer_destroy(circle_layer);
 	
 	// destroy gpaths & gbitmaps
-	gbitmap_destroy(minute_hand_map);
-	gbitmap_destroy(hour_hand_map);
-	gbitmap_destroy(second_hand_map);
-	gbitmap_destroy(dial_map);
+	destroy_bitmaps();
 	
 	// destroy text layers
 	text_layer_destroy(date_text_layer);
@@ -405,6 +564,13 @@ static void init() {
 		.load = main_window_load,
 		.unload = main_window_unload
 	});	
+	
+	// register appMessage handlers
+	app_message_register_inbox_received(inbox_received_callback);
+	app_message_register_inbox_dropped(inbox_dropped_callback);
+	
+	// open AppMessage
+	app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 	
 	// show the Window on the watch, with animated = true
 	window_stack_push(main_window, true);
