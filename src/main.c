@@ -388,6 +388,9 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 /*inbox received callback, deal with successful receipt of message from phone */
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
 
+	// set hands_drawn false to ENSURE hands are relocated
+	hands_drawn = false;
+	
 	// define our temporary buffer first
 	char colour_buffer[7];
 	
@@ -417,6 +420,9 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 		// Look for next item
     t = dict_read_next(iterator);
 	}
+	
+	// ensure we're showing the correct time ...
+	update_time();
 }
 
 /* inbox dropped callback - logs a message that there's been an error */
