@@ -40,7 +40,7 @@
 #define MIN_ROT_Y 66
 	
 /* seconds hand info */
-#define SEC_ROT_X 5
+#define SEC_ROT_X 4
 #define SEC_ROT_Y 64
 
 /*****************************************************/
@@ -63,13 +63,11 @@ GFont eurostile_font;
 /* variables */
 char date_buff[] = "00";
 char day_buff[] = "ABCD";
-bool drawing_hands = false;
+bool hands_drawn = false;
 int hours, minutes, seconds, hours_display;
 int hours_angle = -1;			// set to -1 as default so we draw on load
 int minutes_angle = -1;		// set to -1 as default so we draw on load
 bool dial_is_black;
-
-//int temp_angle = 0;
 
 
 /*****************************************************/
@@ -104,44 +102,18 @@ void circle_update_proc(Layer *l, GContext *ctx) {
 void dummy_update_proc(Layer *l, GContext *ctx) {
 }
 
-int get_off_x() {
-	if( seconds >= 23 && seconds <= 42) {
-		return -1;
-	} else if( seconds >= 15 && seconds <= 45) {
-		return 0;
-	} else {
-		return 1;
-	}
-}
-
-int get_off_y() {
-	if( seconds >= 6 && seconds <= 22) {
-		return 2;
-	} else if( seconds >= 25 && seconds <= 55 ) {
-		return 0;
-	} else {
-		return 1;
-	}
-}
-
 void rotated_map_update(RotBitmapLayer *l, int deg) {
-	GRect r;
+	if(!hands_drawn) {
+		GRect r;
+		r = layer_get_frame((Layer *)l);
+		r.origin.x = ROT_CENTRE_X - r.size.w/2;
+		r.origin.y = ROT_CENTRE_Y - r.size.h/2;
+		layer_set_frame((Layer *)l, r);
+	}
 	int32_t rot_angle = deg * TRIG_MAX_ANGLE / 360;
-	r = layer_get_frame((Layer *)l);
-	r.origin.x = (SCREEN_WIDTH - r.size.w)/2 - 1;
-	r.origin.y = (SCREEN_HEIGHT - r.size.h)/2 - 1;
-	layer_set_frame((Layer *)l, r);
 	rot_bitmap_layer_set_angle(l, rot_angle);
 }
 
-
-void finesse_hands(RotBitmapLayer *l) {
-	GRect r;
-	r = layer_get_frame((Layer *)l);
-	r.origin.x += get_off_x();
-	r.origin.y += get_off_y();
-	layer_set_frame((Layer *)l, r);
-}
 
 /*****************************************************/
 /********** TICK HANDLER HELPER FUNCTIONS ************/	
@@ -200,23 +172,16 @@ char *day_in_caps(char *day) {
 /********** HELPERS FOR B&W / DRAWING LAYERS *********/	
 /*****************************************************/
 
-/* set all the hands to be hidden */
-void hide_all_hands() {
-	layer_set_hidden((Layer *)minute_layer, true);
-	layer_set_hidden((Layer *)hour_layer, true);
-	layer_set_hidden((Layer *)second_layer, true);
-}
-
 /* helper to create all the gbitmaps */
 void load_bitmaps() {
-		dial_map_b = gbitmap_create_with_resource(RESOURCE_ID_DIAL_B);
-		second_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND_B);
-		minute_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND_B);
-		hour_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND_B);
-		dial_map_o = gbitmap_create_with_resource(RESOURCE_ID_DIAL);
-		hour_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND);
-		minute_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND);
-		second_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND);
+	dial_map_b = gbitmap_create_with_resource(RESOURCE_ID_DIAL_B);
+	second_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND_B);
+	minute_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND_B);
+	hour_hand_map_b = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND_B);
+	dial_map_o = gbitmap_create_with_resource(RESOURCE_ID_DIAL);
+	hour_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_HOUR_HAND);
+	minute_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_MINUTE_HAND);
+	second_hand_map_o = gbitmap_create_with_resource(RESOURCE_ID_SECOND_HAND);
 }
 
 /* helper to destroy all the gbitmaps */
@@ -269,7 +234,6 @@ void initialise_dial_and_hands(bool destroy_required) {
 	
 	strcpy(date_buff, "00");
 	strcpy(day_buff, "ABCD");
-	drawing_hands = false;
 	hours_angle = -1;			// set to -1 as default so we draw on load
 	minutes_angle = -1;		// set to -1 as default so we draw on load
 	
@@ -298,21 +262,19 @@ void initialise_dial_and_hands(bool destroy_required) {
 	layer_add_child(hand_group_layer, (Layer *)hour_layer);
 	layer_add_child(hand_group_layer, (Layer *)minute_layer);
 	layer_add_child(hand_group_layer, (Layer *)second_layer);
-	
-	// hide the hands
-	hide_all_hands();
 }
 
 
 /*****************************************************/
-/******************* TICK HANDLER ********************/	
+/************ UPDATE TIME & TICK HANDLER *************/	
 /*****************************************************/
 
-/* tick handler - update the hands */
-void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
+/* update the hands etc */
+void update_time() {
 
-	// as soon as tick_handler starts, set the hands to be visible
-	drawing_hands = true;
+	// store current time
+	time_t temp = time(NULL);
+	struct tm *tick_time = localtime(&temp);
 	
 	// get time into storage
 	hours = (int)tick_time->tm_hour;
@@ -403,15 +365,6 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 	
 	// draw seconds hand
 	rotated_map_update(second_layer, seconds * 360 / 60);
-	finesse_hands(second_layer);
-	
-	// un-hide the rotbitmap hands first time we draw - stops them showing in random position on load
-	bool hands_hidden = layer_get_hidden((Layer *)minute_layer);
-	if(hands_hidden) {
-		layer_set_hidden((Layer *)minute_layer, false);
-		layer_set_hidden((Layer *)hour_layer, false);
-		layer_set_hidden((Layer *)second_layer, false);
-	}
 	
 	// debug option to hide hours and minute hands - #define DCW_DEBUG to use
 	#ifdef DCW_DEBUG
@@ -419,6 +372,12 @@ void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
 		layer_set_hidden((Layer*)hour_layer, true);
 	#endif
 	
+	hands_drawn = true;
+}
+
+/* tick handler - call update_time() */
+void tick_handler(struct tm * tick_time, TimeUnits units_changed) {
+	update_time();
 }
 
 
@@ -464,8 +423,6 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
 	APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped");
 }
-
-
 
 
 /*****************************************************/
@@ -528,6 +485,8 @@ static void main_window_load(Window *w) {
 	
 	// set the dial and create/set up the hands
 	initialise_dial_and_hands(false);
+	
+	update_time();
 }
 
 static void main_window_unload(Window *w) {
