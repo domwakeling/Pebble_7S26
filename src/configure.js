@@ -13,7 +13,7 @@ Pebble.addEventListener("showConfiguration", function() {
 	console.log("Options being sent= " + JSON.stringify(options));
 	
 	// open configuation
-	Pebble.openURL('http://www.domwakeling.com/pebble/7S26/7S26_config_1_2.html?'+encodeURIComponent(JSON.stringify(options)));
+	Pebble.openURL('http://www.domwakeling.com/pebble/7S26/7S26_config_1_7.html?'+encodeURIComponent(JSON.stringify(options)));
 
 });
 
@@ -32,7 +32,12 @@ Pebble.addEventListener("webviewclosed", function(e) {
 		console.log("Options = " + JSON.stringify(options));
 		
 		// we want to make a dictionary from the available information, so get the values as variables ...
-		var dialcolour = options.dialcolour;
+		var dialcolour;
+		if(options.dialcolour_black == 'checked') {
+			dialcolour = 'black';
+		} else {
+			dialcolour = 'orange';
+		}
 		console.log("dial colour chosen: " + dialcolour);
 				
 		// ... then build a dictionary ...
